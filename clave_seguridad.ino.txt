@@ -1,0 +1,128 @@
+//CODIGO CON TIEMPO DE ESPERA DE 5seg Y SISTEMA DE COLORES LED 
+//CLAVE DE 4 DIGITOS : 1234
+
+//INTEGRANTES : BRAYAN BENAVIDES
+//              ALEXIS SICLOS
+//              BAIRON PALECHOR 
+
+#include <LiquidCrystal.h>
+#include <Keypad.h>
+
+/* Display */
+LiquidCrystal lcd(12, 11, 10, 9, 8, 7);
+
+/* Keypad setup */
+const byte KEYPAD_ROWS = 4;
+const byte KEYPAD_COLS = 4;
+byte rowPins[KEYPAD_ROWS] = {5, 4, 3, 2}; 
+byte colPins[KEYPAD_COLS] = {A3, A2, A1, A0};
+char keys[KEYPAD_ROWS][KEYPAD_COLS] = {
+  {'1', '2', '3', '+'},
+  {'4', '5', '6', '-'},
+  {'7', '8', '9', '*'},
+  {'.', '0', '=', '/'}
+};
+
+Keypad keypad = Keypad(makeKeymap(keys), rowPins, colPins, KEYPAD_ROWS, KEYPAD_COLS);
+
+char password[5];
+unsigned char idx = 0;
+unsigned int incorrectAttempts = 0;
+unsigned long lastInputTime = 0;
+unsigned long passwordTimeout = 5000; // Tiempo de espera en milisegundos (5 segundos)
+bool keyEntered = false; // Bandera para verificar si se ha ingresado una tecla
+
+/* LED setup */
+const byte GREEN_LED_PIN = 6;
+const byte BLUE_LED_PIN = 5;
+const byte RED_LED_PIN = 4;
+
+void setup() {
+  lcd.begin(16, 2);
+  lcd.setCursor(0, 0);
+  lcd.print("Bienvenido");
+  lcd.setCursor(0,1);
+  lcd.write((byte)1);
+  delay(1000);
+  lcd.clear();
+  lcd.print("Ingrese clave:");
+  lcd.setCursor(5, 1);
+
+  /* Configure LED pins as outputs */
+  pinMode(GREEN_LED_PIN, OUTPUT);
+  pinMode(BLUE_LED_PIN, OUTPUT);
+  pinMode(RED_LED_PIN, OUTPUT);
+}
+
+void loop() {
+  char key = keypad.getKey();
+  unsigned long currentTime = millis();
+
+  if (key) {
+    lastInputTime = currentTime; // Actualizar el tiempo de la última entrada
+    keyEntered = true; // Se ha ingresado una tecla
+
+    if (key == '=') {
+      password[idx] = '\0'; // Agregar terminador de cadena al final de la contraseña ingresada
+      if (strcmp(password, "1234") == 0) {
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("Clave correcta");
+        digitalWrite(GREEN_LED_PIN, HIGH); // Encender LED verde
+        delay(2000);
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("Ingrese clave:");
+        lcd.setCursor(5, 1);
+        idx = 0;
+        incorrectAttempts = 0;
+        digitalWrite(GREEN_LED_PIN, LOW); // Apagar LED verde
+      } else {
+        incorrectAttempts++;
+        if (incorrectAttempts >= 3) {
+          lcd.clear();
+          lcd.setCursor(0, 0);
+          lcd.print("Sistema bloqueado");
+          digitalWrite(RED_LED_PIN, HIGH); // Encender LED rojo
+          while (true) {
+            // Permanecer en un bucle infinito para evitar cualquier acción adicional
+          }
+        } else {
+          lcd.clear();
+          lcd.setCursor(0, 0);
+          lcd.print("Clave incorrecta");
+          digitalWrite(BLUE_LED_PIN, HIGH); // Encender LED azul
+          delay(2000);
+          lcd.clear();
+          lcd.setCursor(0, 0);
+          lcd.print("Ingrese clave:");
+          lcd.setCursor(5, 1);
+          idx = 0;
+          digitalWrite(BLUE_LED_PIN, LOW); // Apagar LED azul
+        }
+      }
+    } else {
+      if (idx < 4) {
+        password[idx++] = key;
+        lcd.print("*");
+      }
+    }
+  }
+
+  // Verificar si se ha superado el tiempo de espera y se ha ingresado una tecla
+  if (keyEntered && currentTime - lastInputTime > passwordTimeout) {
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Acceso denegado");
+    digitalWrite(RED_LED_PIN, HIGH); // Encender LED rojo
+    delay(2000);
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Ingrese clave:");
+    lcd.setCursor(5, 1);
+    idx = 0;
+    incorrectAttempts = 0;
+    keyEntered = false; // Reiniciar la bandera
+    digitalWrite(RED_LED_PIN, LOW); // Apagar LED rojo
+  }
+}
